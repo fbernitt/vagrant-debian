@@ -14,15 +14,21 @@ case ${argv[0]} in
         OS_TYPE="Debian_64"
     ;;
     *)
-        echo "usage: $0 <32|64> <squeeze|wheezy>"
+        echo "usage: $0 <32|64> <squeeze|wheezy|testing>"
         exit
     ;;
 esac
 
-case ${argv[1]} in
+NAME=${argv[1]}
+
+case $NAME in
     "squeeze")
         VERSION="6.0.9"
         MIRROR_DIR="archive"
+    ;;
+    "testing")
+	VERSION="testing"
+	MIRROR_DIR="weekly-builds"
     ;;
     *)
         VERSION="7.5.0"
@@ -39,7 +45,11 @@ FOLDER_BUILD="${FOLDER_BASE}/build"
 FOLDER_VBOX="${FOLDER_BUILD}/vbox"
 
 DEBIAN_MIRROR="cdimage.debian.org"
-DEBIAN_URL="http://${DEBIAN_MIRROR}/mirror/cdimage/${MIRROR_DIR}/${VERSION}/${ARCH}/iso-cd"
+if [ "$NAME" != "testing" ] ; then
+	DEBIAN_URL="http://${DEBIAN_MIRROR}/mirror/cdimage/${MIRROR_DIR}/${VERSION}/${ARCH}/iso-cd"
+else
+	DEBIAN_URL="http://${DEBIAN_MIRROR}/mirror/cdimage/${MIRROR_DIR}/${ARCH}/iso-cd"
+fi
 DEBIAN_ISO_NAME="debian-${VERSION}-${ARCH}-netinst.iso"
 DEBIAN_ISO_URL="${DEBIAN_URL}/${DEBIAN_ISO_NAME}"
 DEBIAN_ISO_FILE="${FOLDER_ISO}/${DEBIAN_ISO_NAME}"
@@ -117,6 +127,7 @@ function customize_iso {
     FOLDER_INSTALL=$(ls -1 -d "${FOLDER_BUILD}/custom/install."* | sed 's/^.*\///')
     cp -r "${FOLDER_BUILD}/custom/${FOLDER_INSTALL}/"* "${FOLDER_BUILD}/custom/install/"
 
+    info "Adding preseed.cfg to initrd.gz"
     pushd "${FOLDER_BUILD}/initrd"
         gunzip -c "${FOLDER_BUILD}/custom/install/initrd.gz" | $(which fakeroot) cpio -id
         cp "${FOLDER_BASE}/config/preseed.cfg" "${FOLDER_BUILD}/initrd/preseed.cfg"
@@ -202,7 +213,6 @@ vbox_unregister
 
 download_iso
 customize_iso
-
 vbox_create_vm
 vbox_create_storage
 vbox_start_and_wait_for_shutdown
